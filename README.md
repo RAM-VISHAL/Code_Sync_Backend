@@ -2,9 +2,7 @@
 
 **CodeSync** is a high-performance, real-time collaborative IDE platform designed for modern developers. It enables multiple users to co-edit code, manage projects via a virtual file system, execute code in isolated sandboxes, and maintain full version control through cryptographic snapshots. The architecture is built on a distributed microservices model, ensuring high availability, scalability, and fault tolerance.
 
-### Project Repositories
-* **Backend:** [https://github.com/abhays07/codesync-backend](https://github.com/abhays07/codesync-backend)
-* **Frontend:** [https://github.com/abhays07/codesync-frontend](https://github.com/abhays07/codesync-frontend)
+
 
 ---
 
