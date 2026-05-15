@@ -1,0 +1,32 @@
+server:
+    port: 9090
+
+spring:
+    application:
+        name: admin-server
+    boot:
+        admin:
+            context-path: /admin
+            ui:
+                title: "CodeSync Dashboard"
+                brand: "📊 CodeSync Admin"
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    instance:
+        hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+        prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:false}
+        # The admin UI lives under /admin, but the service health endpoint stays at
+        # the normal actuator path.
+        health-check-url-path: /actuator/health
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: "*" # Expose everything so the Admin server can monitor itself
+    endpoint:
+        health:
+            show-details: always

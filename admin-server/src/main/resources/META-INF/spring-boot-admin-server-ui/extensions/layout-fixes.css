@@ -1,0 +1,39 @@
+/*
+ * Prevent long actuator values from stretching Spring Boot Admin detail views
+ * horizontally. Some health/config payloads include long paths, exception
+ * messages, or JSON blobs that otherwise force the page far off-screen.
+ */
+
+#app,
+#app * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+#app {
+  overflow-x: hidden;
+}
+
+#app table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+#app div,
+#app p,
+#app span,
+#app th,
+#app td,
+#app pre,
+#app code,
+#app samp {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+#app svg,
+#app canvas,
+#app img {
+  max-width: 100%;
+}
