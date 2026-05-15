@@ -1,0 +1,45 @@
+server:
+    port: 8085
+
+spring:
+    config:
+        import: optional:file:../.env[.properties]
+    application:
+        name: execution-service
+    datasource:
+        url: jdbc:mysql://${DB_HOST:localhost}:3306/${EXECUTION_DB_NAME:codesync_execution_db}?createDatabaseIfNotExist=true
+        username: ${DB_USER:root}
+        password: ${DB_PASSWORD:password}
+    jpa:
+        hibernate:
+            ddl-auto: update
+        show-sql: false
+
+    rabbitmq:
+        host: ${RABBIT_HOST:localhost}
+        port: 5672
+        listener:
+            simple:
+                # Optimization: Only process 1 code execution at a time per service instance
+                # to prevent CPU spikes and ensure sandbox integrity.
+                prefetch: 1
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    instance:
+        hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+        prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:false}
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: "health,info"
+
+springdoc:
+    api-docs:
+        path: /v3/api-docs
+    swagger-ui:
+        path: /swagger-ui.html
