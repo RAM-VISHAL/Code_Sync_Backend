@@ -1,0 +1,215 @@
+server:
+    port: 9010
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.http.server.reactive: INFO
+    org.springframework.web.reactive: INFO
+    reactor.netty.http.server: INFO
+
+spring:
+    config:
+        import: optional:file:../.env[.properties]
+    application:
+        name: api-gateway
+    cloud:
+        gateway:
+            # --- CORS Configuration ---
+            server:
+                webflux:
+                    default-filters:
+                        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+                    globalcors:
+                        add-to-simple-url-handler-mapping: true
+                        cors-configurations:
+                            "[/**]":
+                                allowedOriginPatterns: "*"
+                                allowedMethods:
+                                    ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+                                allowedHeaders: "*"
+                                allowCredentials: true
+
+                    # --- HTTP Client Timeouts ---
+                    httpclient:
+                        connect-timeout: 10000
+                        response-timeout: 30s
+
+                    discovery:
+                        locator:
+                            enabled: true
+                            lower-case-service-id: true
+
+                    routes:
+                        - id: auth-service
+                          uri: lb://auth-service
+                          predicates:
+                              - Path=/api/v1/auth/**
+
+                        - id: admin-user-service
+                          uri: lb://auth-service
+                          predicates:
+                              - Path=/api/v1/admin/users/**
+
+                        - id: project-service
+                          uri: lb://project-service
+                          predicates:
+                              - Path=/api/v1/projects/**
+
+                        - id: admin-project-service
+                          uri: lb://project-service
+                          predicates:
+                              - Path=/api/v1/admin/projects/**
+
+                        - id: file-service
+                          uri: lb://file-service
+                          predicates:
+                              - Path=/api/v1/files/**
+
+                        - id: collab-service
+                          uri: lb://collab-service
+                          predicates:
+                              - Path=/api/v1/sessions/**
+
+                        - id: execution-service
+                          uri: lb://execution-service
+                          predicates:
+                              - Path=/api/v1/executions/**
+
+                        - id: comment-service
+                          uri: lb://comment-service
+                          predicates:
+                              - Path=/api/v1/comments/**
+
+                        - id: notification-service
+                          uri: lb://notification-service
+                          predicates:
+                              - Path=/api/v1/notifications/**
+
+                        - id: version-service
+                          uri: lb://version-service
+                          predicates:
+                              - Path=/api/v1/versions/**
+
+                        - id: notification-ws
+                          uri: lb:ws://notification-service
+                          predicates:
+                              - Path=/ws-notifications/**
+
+                        - id: collab-ws
+                          uri: lb:ws://collab-service
+                          predicates:
+                              - Path=/ws-collab/**
+
+                        - id: payment-service
+                          uri: lb://payment-service
+                          predicates:
+                              - Path=/api/v1/payments/**
+
+                        - id: admin-payment-service
+                          uri: lb://payment-service
+                          predicates:
+                              - Path=/api/v1/admin/payments/**
+
+                        - id: admin-server
+                          uri: lb://admin-server
+                          predicates:
+                              - Path=/admin/**
+
+                        - id: auth-service-openapi
+                          uri: lb://auth-service
+                          predicates:
+                              - Path=/v3/api-docs/auth
+                          filters:
+                              - SetPath=/v3/api-docs
+
+                        - id: project-service-openapi
+                          uri: lb://project-service
+                          predicates:
+                              - Path=/v3/api-docs/projects
+                          filters:
+                              - SetPath=/v3/api-docs
+
+                        - id: file-service-openapi
+                          uri: lb://file-service
+                          predicates:
+                              - Path=/v3/api-docs/files
+                          filters:
+                              - SetPath=/v3/api-docs
+
+                        - id: collab-service-openapi
+                          uri: lb://collab-service
+                          predicates:
+                              - Path=/v3/api-docs/collab
+                          filters:
+                              - SetPath=/v3/api-docs
+
+                        - id: execution-service-openapi
+                          uri: lb://execution-service
+                          predicates:
+                              - Path=/v3/api-docs/executions
+                          filters:
+                              - SetPath=/v3/api-docs
+
+                        - id: comment-service-openapi
+                          uri: lb://comment-service
+                          predicates:
+                              - Path=/v3/api-docs/comments
+                          filters:
+                              - SetPath=/v3/api-docs
+
+                        - id: notification-service-openapi
+                          uri: lb://notification-service
+                          predicates:
+                              - Path=/v3/api-docs/notifications
+                          filters:
+                              - SetPath=/v3/api-docs
+
+                        - id: version-service-openapi
+                          uri: lb://version-service
+                          predicates:
+                              - Path=/v3/api-docs/versions
+                          filters:
+                              - SetPath=/v3/api-docs
+
+                        - id: payment-service-openapi
+                          uri: lb://payment-service
+                          predicates:
+                              - Path=/v3/api-docs/payments
+                          filters:
+                              - SetPath=/v3/api-docs
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    instance:
+        hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+        prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:false}
+
+springdoc:
+    swagger-ui:
+        path: /swagger-ui.html
+        disable-swagger-default-url: true
+        urls:
+            - name: "01. Auth Service"
+              url: "/v3/api-docs/auth"
+            - name: "02. Project Service"
+              url: "/v3/api-docs/projects"
+            - name: "03. File Service"
+              url: "/v3/api-docs/files"
+            - name: "04. Collab Service"
+              url: "/v3/api-docs/collab"
+            - name: "05. Execution Service"
+              url: "/v3/api-docs/executions"
+            - name: "06. Comment Service"
+              url: "/v3/api-docs/comments"
+            - name: "07. Notification Service"
+              url: "/v3/api-docs/notifications"
+            - name: "08. Version Service"
+              url: "/v3/api-docs/versions"
+            - name: "09. Payment Service"
+              url: "/v3/api-docs/payments"
+
+jwt:
+    secret: ${JWT_SECRET:CodeSyncSuperSecretKeyForJWTAuthentication2026!}

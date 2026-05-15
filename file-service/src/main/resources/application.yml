@@ -1,0 +1,48 @@
+server:
+    port: 8083
+
+spring:
+    config:
+        import: optional:file:../.env[.properties]
+    application:
+        name: file-service
+    datasource:
+        # Industry Standard: SSL disabled for local dev, enabled via ENV in production
+        url: jdbc:mysql://${DB_HOST:localhost}:3306/${FILE_DB_NAME:codesync_files_db}?createDatabaseIfNotExist=true&useSSL=false
+        username: ${DB_USER:root}
+        password: ${DB_PASSWORD:password}
+    jpa:
+        hibernate:
+            ddl-auto: update
+        show-sql: false # Clean logs for production
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.MySQLDialect
+
+    servlet:
+        multipart:
+            max-file-size: 5MB # Standardizing code file limits
+            max-request-size: 5MB
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    instance:
+        hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+        prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:false}
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: "health,info"
+
+jwt:
+    secret: ${JWT_SECRET:CodeSyncSuperSecretKeyForJWTAuthentication2026!}
+
+springdoc:
+    api-docs:
+        path: /v3/api-docs
+    swagger-ui:
+        path: /swagger-ui.html

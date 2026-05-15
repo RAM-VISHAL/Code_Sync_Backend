@@ -1,0 +1,377 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  eureka-server:
+    build:
+      context: ./eureka-server
+    image: codesync/eureka-server:local
+    restart: unless-stopped
+    environment:
+      EUREKA_HOSTNAME: localhost
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8761/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+
+  admin-server:
+    build:
+      context: ./admin-server
+    image: codesync/admin-server:local
+    restart: unless-stopped
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: admin-server
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+
+  auth-service:
+    build:
+      context: ./auth-service
+    image: codesync/auth-service:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      AUTH_DB_NAME: ${AUTH_DB_NAME:-codesync_auth_db}
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: auth-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+      JWT_SECRET: ${JWT_SECRET}
+      TOKEN_EXPIRY: ${TOKEN_EXPIRY:-86400000}
+      AUTH_BASE_URL: ${AUTH_BASE_URL:-http://localhost:9010/api/v1/auth}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      EMAIL_USERNAME: ${EMAIL_USERNAME}
+      EMAIL_APP_PASSWORD: ${EMAIL_APP_PASSWORD}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  project-service:
+    build:
+      context: ./project-service
+    image: codesync/project-service:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      PROJECT_DB_NAME: ${PROJECT_DB_NAME:-codesync_project_db}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: project-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  file-service:
+    build:
+      context: ./file-service
+    image: codesync/file-service:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      FILE_DB_NAME: ${FILE_DB_NAME:-codesync_files_db}
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: file-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8083/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  collab-service:
+    build:
+      context: ./collab-service
+    image: codesync/collab-service:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      COLLAB_DB_NAME: ${COLLAB_DB_NAME:-codesync_collab_db}
+      ADMIN_SERVER_URL: http://admin-server:9090
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: collab-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      admin-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8084/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  execution-service:
+    build:
+      context: ./execution-service
+    image: codesync/execution-service:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      EXECUTION_DB_NAME: ${EXECUTION_DB_NAME:-codesync_execution_db}
+      RABBIT_HOST: rabbitmq
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: execution-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+      DOCKER_HOST: unix:///var/run/docker.sock
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8085/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  version-service:
+    build:
+      context: ./version-service
+    image: codesync/version-service:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      VERSION_DB_NAME: ${VERSION_DB_NAME:-codesync_version_db}
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: version-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8086/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  notification-service:
+    build:
+      context: ./notification-service
+    image: codesync/notification-service:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME:-codesync_notification_db}
+      RABBIT_HOST: rabbitmq
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: notification-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      EMAIL_USERNAME: ${EMAIL_USERNAME}
+      EMAIL_APP_PASSWORD: ${EMAIL_APP_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8087/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  comment-service:
+    build:
+      context: ./comment-service
+    image: codesync/comment-service:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      COMMENT_DB_NAME: ${COMMENT_DB_NAME:-codesync_comment_db}
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: comment-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8088/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  payment-service:
+    build:
+      context: ./payment-service
+    image: codesync/payment-service:local
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      PAYMENT_DB_NAME: ${PAYMENT_DB_NAME:-codesync_payment_db}
+      RABBIT_HOST: rabbitmq
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: payment-service
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+      JWT_SECRET: ${JWT_SECRET}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8089/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    image: codesync/api-gateway:local
+    restart: unless-stopped
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_INSTANCE_HOSTNAME: api-gateway
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      project-service:
+        condition: service_healthy
+      file-service:
+        condition: service_healthy
+      collab-service:
+        condition: service_healthy
+      execution-service:
+        condition: service_healthy
+      version-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      comment-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+      admin-server:
+        condition: service_healthy
+    ports:
+      - "9010:9010"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:9010/swagger-ui.html"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+volumes:
+  mysql-data:
+  rabbitmq-data:
