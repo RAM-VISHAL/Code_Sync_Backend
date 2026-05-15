@@ -1,0 +1,95 @@
+server:
+  port: 8081
+  forward-headers-strategy: framework
+
+spring:
+  config:
+    import: optional:file:../.env[.properties]
+  application:
+    name: auth-service
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/${AUTH_DB_NAME:codesync_auth_db}?createDatabaseIfNotExist=true
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:password}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # --- CRITICAL: Mail Configuration with Timeout Fixes ---
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME} # Set in System Environment Variables
+    password: ${EMAIL_APP_PASSWORD} # Use a 16-character Google App Password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  # --- OAUTH2 CONFIGURATION ---
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: "${AUTH_BASE_URL:http://localhost:9010/api/v1/auth}/login/oauth2/code/google"
+            scope:
+              - email
+              - profile
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            redirect-uri: "${AUTH_BASE_URL:http://localhost:9010/api/v1/auth}/login/oauth2/code/github"
+            scope:
+              - read:user
+              - user:email
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+  instance:
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+    prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,env"
+  endpoint:
+    health:
+      show-details: always
+  health:
+    # Keep local/dev health checks green even when SMTP credentials are absent
+    # or intentionally invalid. The mail sender itself still works when used.
+    mail:
+      enabled: false
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiry: ${TOKEN_EXPIRY:86400000}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+  server:
+    url: ${AUTH_BASE_URL:http://localhost:9010/api/v1/auth}
