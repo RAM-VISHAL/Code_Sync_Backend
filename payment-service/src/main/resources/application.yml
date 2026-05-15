@@ -1,0 +1,53 @@
+server:
+    port: 8089
+
+spring:
+    config:
+        import: optional:file:../.env[.properties]
+    application:
+        name: payment-service
+    datasource:
+        url: jdbc:mysql://${DB_HOST:localhost}:3306/${PAYMENT_DB_NAME:codesync_payment_db}?createDatabaseIfNotExist=true
+        username: ${DB_USER}
+        password: ${DB_PASSWORD}
+        driver-class-name: com.mysql.cj.jdbc.Driver
+    jpa:
+        hibernate:
+            ddl-auto: update
+        show-sql: true
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.MySQLDialect
+    rabbitmq:
+        host: ${RABBIT_HOST:localhost}
+        port: 5672
+
+# Razorpay Specific Config
+razorpay:
+    key:
+        id: ${RAZORPAY_KEY_ID}
+        secret: ${RAZORPAY_KEY_SECRET}
+
+jwt:
+    secret: ${JWT_SECRET:CodeSyncSuperSecretKeyForJWTAuthentication2026!}
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
+    instance:
+        hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+        prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:false}
+
+# Monitoring (Spring Boot Admin)
+management:
+    endpoints:
+        web:
+            exposure:
+                include: "*"
+
+springdoc:
+    api-docs:
+        path: /v3/api-docs
+    swagger-ui:
+        path: /swagger-ui.html
