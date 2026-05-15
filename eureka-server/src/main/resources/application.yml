@@ -1,0 +1,39 @@
+server:
+    port: 8761
+
+spring:
+    application:
+        name: eureka-server
+
+eureka:
+    instance:
+        # Use localhost or environment variable for Docker/Cloud deployment
+        hostname: ${EUREKA_HOSTNAME:localhost}
+    server:
+        # Industry Standard: Wait time before starting eviction (prevents startup chaos)
+        wait-time-in-ms-when-sync-empty: 0
+        # Prevents Eureka from evicting healthy services during network jitters
+        enable-self-preservation: true
+        # Frequency to check for expired service heartbeats (set to 30s)
+        eviction-interval-timer-in-ms: 30000
+    client:
+        # Since this is the server, it shouldn't register with itself
+        register-with-eureka: false
+        # It doesn't need to fetch a registry from another server (in standalone mode)
+        fetch-registry: false
+        service-url:
+            defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+
+# Monitoring: Necessary for Spring Boot Admin to track Eureka's uptime
+management:
+    endpoints:
+        web:
+            exposure:
+                # Expose health and info for external monitoring tools
+                include: "health,info"
+    endpoint:
+        health:
+            show-details: always
+    info:
+        env:
+            enabled: true
