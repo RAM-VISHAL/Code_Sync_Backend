@@ -192,6 +192,7 @@ services:
       context: ./execution-service
     image: codesync/execution-service:local
     restart: unless-stopped
+    user: "0:0"
     environment:
       DB_HOST: mysql
       DB_USER: ${DB_USER:-root}
